@@ -1,7 +1,7 @@
 {
   "map_version": 1,
   "floor": "the_bone_garden",
-  "floor_sha": "cfbce081c26e776ec39b2dba99046ac4a2d393d1da9b800e84435931b407bfff",
+  "floor_sha": "bf65f34037bb125ee0caedbb7bcf1fac31980e4afc87d9b29d9ab081631478a3",
   "generator": "clotho 0.1.0",
   "grid": {
     "type": "square",
