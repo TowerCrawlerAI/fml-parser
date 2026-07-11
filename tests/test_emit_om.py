@@ -118,6 +118,38 @@ def test_entity_triggers_lower_to_om_on():
     assert '_proto(n_oracle, "npc")' in out          # still placed structurally
 
 
+def test_om_registers_world_entities_by_name():
+    # Every world entity is registered under its display name so runtime content
+    # can resolve it with wyrd.named("<Name>") — e.g. cloning a monster
+    # prototype at ambush time: wyrd.create(wyrd.named("Skeleton Scavenger")).
+    # Without this, wyrd.named() only sees stdlib kinds and a runtime clone gets
+    # a stat-less bare node.
+    scav = make_entity("skeleton_scavenger", "Skeleton Scavenger", "npc",
+                       properties={"hp": 13, "ac": 13})
+    cell = make_entity("cell", "Cell", "room")
+    out = emit_lua_om(make_floor([cell, scav], start_location="cell"))
+    assert 'wyrd.register("Skeleton Scavenger", n_skeleton_scavenger)' in out
+    assert 'wyrd.register("Cell", n_cell)' in out
+    # The node it points at is the one carrying the stat block, so a clone of it
+    # inherits hp/ac (the whole point — a real combatant, not a bare node).
+    assert ('local n_skeleton_scavenger = engine.create_node({ name = '
+            '"Skeleton Scavenger"') in out
+    # Registration must come AFTER the node is declared (forward-reference to
+    # n_<id> would be a nil global under Luau).
+    assert (out.index('local n_skeleton_scavenger =')
+            < out.index('wyrd.register("Skeleton Scavenger"'))
+
+
+def test_graph_path_does_not_register_by_name():
+    # The name registry is an om-path affordance (it mirrors the om _proto
+    # helper). The legacy graph emitter must not emit it.
+    scav = make_entity("skeleton_scavenger", "Skeleton Scavenger", "npc",
+                       properties={"hp": 13})
+    cell = make_entity("cell", "Cell", "room")
+    out = emit_lua_graph(make_floor([cell, scav], start_location="cell"))
+    assert "wyrd.register(" not in out
+
+
 def test_om_event_name_mapping():
     # the <stage> <Event> heading collapses to On<Event> for the om event bus.
     from fml_parser.emit_lua import _om_event_name

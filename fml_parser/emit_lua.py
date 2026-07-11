@@ -435,6 +435,27 @@ def emit_lua_graph(
     if world_entities:
         parts.append("")
 
+    # 4a. Name registry — register each world entity under its display name so
+    # runtime content can resolve it with `wyrd.named("<Name>")`, e.g. cloning a
+    # monster prototype at ambush time:
+    #     wyrd.create(wyrd.named("Skeleton Scavenger"))
+    # Mirrors the trampoline registering its own prototypes (OBJECT_MODEL §3 — a
+    # "kind" is a named prototype). Without this, only stdlib kinds are
+    # name-addressable and a floor's own entities are invisible to wyrd.named,
+    # so a runtime `wyrd.create(wyrd.named(...))` clones a stat-less bare node.
+    # Deterministic order; on a duplicate display name the last entity wins.
+    # NB: wyrd.named is ONE flat namespace shared with kinds/prototypes (see the
+    # _proto helper above, which resolves kind names through it), so a floor
+    # entity whose display name equals a kind name (e.g. "npc"/"room") shadows
+    # that prototype for runtime lookups. Runs after the _proto loop, so
+    # load-time prototype resolution is unaffected; only later wyrd.named calls
+    # see the entity. Authors keep entity display names distinct from kind names.
+    if om and world_entities:
+        parts.append("-- Name registry (wyrd.named lookups)")
+        for ent in world_entities:
+            parts.append(f"wyrd.register({_lua_string(ent.name)}, n_{ent.id})")
+        parts.append("")
+
     # 4b. Prose — an entity's prose lowers to a function(self, ctx) (PROSE.md),
     # registered with engine.set_prose so the engine renders it at look/examine
     # time (evaluating any inline conditionals). Markdown links are flattened.
